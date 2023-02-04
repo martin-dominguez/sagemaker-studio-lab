@@ -1,18 +1,48 @@
 # Develop your ML project with Amazon SageMaker
-## Lab 3 Files
-Use this files if you didn't complete the Lab 2
-1. Open a terminal in your SageMaker Studio
-2. Copy the zip file locally in your Studio
+## Lab 3
+**If you didn't complete LAB 2:**
+ 1. In your Dataflow go to the last transformation and click on `Add a destination`
+ 2. Complete parameters:
+    * Dataset name: `bank-additional-transformed`
+    * File type: CSV
+    * Delimiter: Comma
+    * Compression: None
+    * Amazon S3 Location: Browse your `sagemaker-us-east-1-xxxxxxx/sagemaker/DEMO-xgboost-dm` bucket and folder
+ 3. Create Job. Keep the default setting and wait for it to finish. It'll take around 7 minutes tansform the whole dataset.
+ 4. In `feature_store_xgboost_direct_marketing_sagemaker.ipynb` notebook, go to `cell 05` and add a new cell.
+ 5. Copy the following code:
+    ```
+    import dask.dataframe as dd
+    dataset_url = 's3://'+bucket+'/'+prefix+'/bank-additional-transformed.csv'
+    model_data_dask = dd.read_csv(dataset_url)
+    model_data = model_data_dask.compute()
+    ```
+ 6. Ignore `cell 06` and continue executing the rest of the Notebook's cells
+## Lab 4
+**instance_type is a pipeline variable**
+Although the value is not valid, SageMaker will get the good value from the `default_value` attribute. Anyway, if you want to avoid this message change `processing_instance_type` to `processing_instance_type.default_value`
 
-    `curl -LJO https://github.com/martin-dominguez/sagemaker-studio-lab/raw/master/DEMO-xgboost-dm.tgz`
+### Define a Condition Step to Check Accuracy and Conditionally Register a Model in the Model Registry 
 
-3. Uncompress it
+**JsonGet has been deprecated:**
+```
+from sagemaker.workflow.conditions import ConditionGreaterThanOrEqualTo
+from sagemaker.workflow.condition_step import (ConditionStep)
+from sagemaker.workflow.functions import JsonGet
 
-    `tar xvfz DEMO-xgboost-dm.tgz --exclude="._*"`
+cond_lte = ConditionGreaterThanOrEqualTo(  # You can change the condition here
+        left=JsonGet(
+            step_name=step_eval.name,
+            property_file=evaluation_report,
+            json_path="binary_classification_metrics.accuracy.value",  # This should follow the structure of your report_dict defined in the evaluate.py file.
+        ),
+        right=0.8,  # You can change the threshold here
+)
 
-4. Get the SageMaker S3 Bucket name (sagemaker-us-east-1-xxx)
-5. Upload to the sagemaker bucket
-
-    `aws s3 sync DEMO-xgboost-dm s3://sagemaker-us-east-1-497176641681/sagemaker/DEMO-xgboost-dm`
-
-6. Execute `cell 01` and `cell 02` and then go to `cell 11`
+step_cond = ConditionStep(
+    name="MarketingAccuracyCond",
+    conditions=[cond_lte],
+    if_steps=[step_register],
+    else_steps=[]
+)
+```
