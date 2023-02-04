@@ -8,7 +8,7 @@ Use this files if you didn't complete the Lab 2
 
 3. Uncompress it
 
-    `tar xvfz DEMO-xgboost-dm.tgz`
+    `tar xvfz DEMO-xgboost-dm.tgz --exclude="._*"`
 
 4. Get the SageMaker S3 Bucket name (sagemaker-us-east-1-xxx)
 5. Upload to the sagemaker bucket
